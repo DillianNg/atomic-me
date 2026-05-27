@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { buildApp } from '../app.js';
 
@@ -32,10 +32,23 @@ describe('GET /health', () => {
 });
 
 describe('GET /ready', () => {
+  // Stub DB de test khong phu thuoc Postgres that (CI khong co DB).
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('returns 200 with db ok when the database is reachable', async () => {
+    vi.spyOn(app.db, '$queryRaw').mockResolvedValue([{ result: 1 }]);
     const res = await app.inject({ method: 'GET', url: '/ready' });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ status: 'ready', checks: { db: 'ok' } });
+  });
+
+  it('returns 503 with db fail when the database is unreachable', async () => {
+    vi.spyOn(app.db, '$queryRaw').mockRejectedValue(new Error('connection refused'));
+    const res = await app.inject({ method: 'GET', url: '/ready' });
+    expect(res.statusCode).toBe(503);
+    expect(res.json()).toEqual({ status: 'not_ready', checks: { db: 'fail' } });
   });
 });
 
