@@ -1,0 +1,273 @@
+// atomic-me database schema
+// Postgres 16 + pgvector. ID dung cuid() (Prisma 5 chua support cuid(2) lam @default;
+// app-side id generation o @atomic-me/shared dung cuid2). Xem PHASE_1 deviation.
+// embedding la cot pgvector, Prisma chua native support nen dung Unsupported,
+// query vector se lam o repository layer qua $queryRaw (Phase sau).
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [vector]
+}
+
+// ============================================================
+// Enums (phai khop 1-1 voi Zod enum trong packages/shared)
+// ============================================================
+
+enum AssetType {
+  PDF
+  DOCX
+  IMAGE
+  AUDIO
+  LINKEDIN_ARCHIVE
+  TEXT
+}
+
+enum AssetStatus {
+  UPLOADED
+  PARSING
+  PARSED
+  EXTRACTING
+  COMPLETED
+  FAILED
+}
+
+enum AtomKind {
+  SKILL
+  EXPERIENCE
+  EDUCATION
+  ACHIEVEMENT
+  PROJECT
+  CERTIFICATION
+  LANGUAGE
+  RESPONSIBILITY
+}
+
+enum SkillCategory {
+  TECHNICAL
+  SOFT
+  LANGUAGE
+  TOOL
+  FRAMEWORK
+  DOMAIN
+}
+
+enum JDStatus {
+  PARSING
+  PARSED
+  FAILED
+}
+
+enum GenerationType {
+  CV
+  COVER_LETTER
+}
+
+enum CreditReason {
+  SIGNUP_BONUS
+  REFERRAL_SENT
+  REFERRAL_RECEIVED
+  SOCIAL_SHARE
+  GENERATION_CV
+  GENERATION_COVER_LETTER
+  ADMIN_GRANT
+  REFUND
+}
+
+enum ReferralStatus {
+  PENDING
+  ACCEPTED
+  VERIFIED
+  EXPIRED
+}
+
+// ============================================================
+// Models
+// ============================================================
+
+model User {
+  id        String    @id @default(cuid())
+  clerkId   String    @unique
+  email     String    @unique
+  name      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  assets             Asset[]
+  atoms              Atom[]
+  jds                JD[]
+  generations        Generation[]
+  creditBalance      CreditBalance?
+  creditTransactions CreditTransaction[]
+  referralsSent      Referral[]          @relation("ReferralInviter")
+  referralsReceived  Referral[]          @relation("ReferralInvitee")
+  auditLogs          AuditLog[]
+
+  @@index([deletedAt])
+}
+
+model Asset {
+  id               String      @id @default(cuid())
+  userId           String
+  type             AssetType
+  originalFilename String
+  storageKey       String
+  sizeBytes        Int
+  mimeType         String
+  status           AssetStatus @default(UPLOADED)
+  parsedText       String?     @db.Text
+  errorMessage     String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  atoms Atom[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Atom {
+  id               String                       @id @default(cuid())
+  userId           String
+  assetId          String?
+  kind             AtomKind
+  content          Json
+  evidenceSpan     Json
+  confidence       Float
+  canonicalSkillId String?
+  embedding        Unsupported("vector(1024)")?
+  isVerified       Boolean                      @default(false)
+  mergedIntoId     String?
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset          Asset?          @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  canonicalSkill CanonicalSkill? @relation(fields: [canonicalSkillId], references: [id])
+  mergedInto     Atom?           @relation("AtomMerge", fields: [mergedIntoId], references: [id])
+  mergedFrom     Atom[]          @relation("AtomMerge")
+
+  @@index([userId])
+  @@index([kind])
+  @@index([canonicalSkillId])
+}
+
+model CanonicalSkill {
+  id        String        @id @default(cuid())
+  name      String        @unique
+  aliases   String[]
+  category  SkillCategory
+  escoUri   String?
+  parentId  String?
+  createdAt DateTime      @default(now())
+
+  parent   CanonicalSkill?  @relation("SkillHierarchy", fields: [parentId], references: [id])
+  children CanonicalSkill[] @relation("SkillHierarchy")
+  atoms    Atom[]
+
+  @@index([name])
+  @@index([category])
+}
+
+model JD {
+  id                 String   @id @default(cuid())
+  userId             String
+  rawText            String   @db.Text
+  companyName        String?
+  jobTitle           String?
+  parsedRequirements Json?
+  status             JDStatus @default(PARSING)
+  createdAt          DateTime @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generations Generation[]
+
+  @@index([userId])
+}
+
+model Generation {
+  id              String         @id @default(cuid())
+  userId          String
+  jdId            String
+  type            GenerationType
+  selectedAtomIds String[]
+  output          Json
+  creditCost      Int
+  promptVersion   String
+  modelUsed       String
+  createdAt       DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jd   JD   @relation(fields: [jdId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([jdId])
+}
+
+model CreditBalance {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  balance        Int      @default(0)
+  lifetimeEarned Int      @default(0)
+  lifetimeSpent  Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CreditTransaction {
+  id           String       @id @default(cuid())
+  userId       String
+  amount       Int
+  reason       CreditReason
+  referenceId  String?
+  balanceAfter Int
+  createdAt    DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Referral {
+  id         String         @id @default(cuid())
+  code       String         @unique
+  inviterId  String
+  inviteeId  String?
+  status     ReferralStatus @default(PENDING)
+  verifiedAt DateTime?
+  createdAt  DateTime       @default(now())
+  expiresAt  DateTime
+
+  inviter User  @relation("ReferralInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee User? @relation("ReferralInvitee", fields: [inviteeId], references: [id], onDelete: SetNull)
+
+  @@index([inviterId])
+  @@index([code])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}

@@ -60,33 +60,33 @@ All matched files use Prettier code style!
 
 ## Files Created (25 files, excluding pnpm-lock.yaml)
 
-| File | Lines |
-|------|-------|
-| .editorconfig | 12 |
-| .env.example | 46 |
-| .github/workflows/ci.yml | 44 |
-| .gitignore | 37 |
-| .npmrc | 4 |
-| .nvmrc | 1 |
-| .prettierignore | 7 |
-| .prettierrc.json | 8 |
-| .vscode/settings.json | 23 |
-| README.md | 70 |
-| apps/api/.gitkeep | 0 |
-| apps/web/.gitkeep | 0 |
-| apps/worker/.gitkeep | 0 |
-| docs/architecture.md | 39 |
-| package.json | 27 |
-| packages/eslint-config/index.js | 68 |
-| packages/eslint-config/package.json | 17 |
-| packages/tsconfig/base.json | 23 |
-| packages/tsconfig/node.json | 10 |
-| packages/tsconfig/package.json | 10 |
-| packages/tsconfig/react.json | 8 |
-| pnpm-workspace.yaml | 3 |
-| tsconfig.base.json | 6 |
-| turbo.json | 35 |
-| PHASE_0_VERIFICATION.md | this file |
+| File                                | Lines     |
+| ----------------------------------- | --------- |
+| .editorconfig                       | 12        |
+| .env.example                        | 46        |
+| .github/workflows/ci.yml            | 44        |
+| .gitignore                          | 37        |
+| .npmrc                              | 4         |
+| .nvmrc                              | 1         |
+| .prettierignore                     | 7         |
+| .prettierrc.json                    | 8         |
+| .vscode/settings.json               | 23        |
+| README.md                           | 70        |
+| apps/api/.gitkeep                   | 0         |
+| apps/web/.gitkeep                   | 0         |
+| apps/worker/.gitkeep                | 0         |
+| docs/architecture.md                | 39        |
+| package.json                        | 27        |
+| packages/eslint-config/index.js     | 68        |
+| packages/eslint-config/package.json | 17        |
+| packages/tsconfig/base.json         | 23        |
+| packages/tsconfig/node.json         | 10        |
+| packages/tsconfig/package.json      | 10        |
+| packages/tsconfig/react.json        | 8         |
+| pnpm-workspace.yaml                 | 3         |
+| tsconfig.base.json                  | 6         |
+| turbo.json                          | 35        |
+| PHASE_0_VERIFICATION.md             | this file |
 
 ## Deviations from Spec
 

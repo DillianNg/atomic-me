@@ -1,0 +1,24 @@
+# Postgres 16 + pgvector cho local development.
+# Khoi dong: docker compose up -d
+# Connection: postgresql://atomic:atomic@localhost:5432/atomic_me
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: atomic-me-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: atomic
+      POSTGRES_PASSWORD: atomic
+      POSTGRES_DB: atomic_me
+    ports:
+      - '5432:5432'
+    volumes:
+      - atomic-me-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U atomic -d atomic_me']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  atomic-me-pgdata:
