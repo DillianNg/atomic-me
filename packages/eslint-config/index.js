@@ -6,7 +6,14 @@ import importPlugin from 'eslint-plugin-import-x';
 // Cau hinh base: typescript + prettier, dung chung cho moi package
 const base = [
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/.turbo/**', '**/.next/**'],
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
+      '**/.turbo/**',
+      '**/.next/**',
+      '**/coverage/**',
+    ],
   },
   {
     files: ['**/*.{ts,tsx,js,jsx}'],

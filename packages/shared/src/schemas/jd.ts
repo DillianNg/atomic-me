@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { MAX_JD_LENGTH_CHARS } from '../constants/limits';
+import { MAX_JD_LENGTH_CHARS } from '../constants/limits.js';
 
-import { AtomKindSchema } from './atom';
+import { AtomKindSchema } from './atom.js';
 
 /**
  * Muc do quan trong cua mot requirement trong JD.
