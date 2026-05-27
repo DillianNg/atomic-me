@@ -11,6 +11,11 @@ export default defineConfig({
       API_HOST: '0.0.0.0',
       LOG_LEVEL: 'silent',
       DATABASE_URL: 'postgresql://atomic:atomic@localhost:5432/atomic_me',
+      // Gia tri Clerk gia lap cho test: env.ts validate luc import nen phai co.
+      CLERK_SECRET_KEY: 'sk_test_dummy',
+      CLERK_PUBLISHABLE_KEY: 'pk_test_dummy',
+      CLERK_WEBHOOK_SECRET: 'whsec_dGVzdHNlY3JldHRlc3RzZWNyZXQ=',
+      CLERK_JWT_ISSUER: 'https://example.clerk.accounts.dev',
     },
     coverage: {
       provider: 'v8',

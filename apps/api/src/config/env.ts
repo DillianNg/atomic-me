@@ -12,6 +12,16 @@ export const envSchema = z.object({
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
   API_HOST: z.string().min(1).default('0.0.0.0'),
+
+  // --- Clerk (Phase 3 auth). Tat ca bat buoc: fail-fast khi thieu. ---
+  /** Secret key cho @clerk/backend verifyToken + clerkClient (sk_...). */
+  CLERK_SECRET_KEY: z.string().min(1),
+  /** Publishable key, FE dung; BE giu de cau hinh nhat quan (pk_...). */
+  CLERK_PUBLISHABLE_KEY: z.string().min(1),
+  /** Svix signing secret de verify webhook Clerk (whsec_...). */
+  CLERK_WEBHOOK_SECRET: z.string().min(1),
+  /** Issuer (iss) cua JWT Clerk, vd https://<app>.clerk.accounts.dev. */
+  CLERK_JWT_ISSUER: z.string().url(),
 });
 
 /** Kieu env da validate, infer tu schema. */

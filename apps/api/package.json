@@ -16,10 +16,12 @@
   "dependencies": {
     "@atomic-me/db": "workspace:*",
     "@atomic-me/shared": "workspace:*",
+    "@clerk/backend": "^3.4.13",
     "@fastify/sensible": "^6.0.2",
     "fastify": "^5.2.0",
     "fastify-plugin": "^5.0.1",
     "pino-pretty": "^13.0.0",
+    "svix": "^1.94.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
