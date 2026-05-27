@@ -30,7 +30,7 @@ pnpm dev
 ```
 atomic-me/
 ├── apps/
-│   ├── web/          # Frontend: Vite + React 18 + Tailwind v4
+│   ├── web/          # Frontend: Vite + React 18 + Tailwind v3 + Clerk
 │   ├── api/          # Backend: Fastify + Prisma + Clerk
 │   └── worker/       # Background jobs: BullMQ workers
 ├── packages/
@@ -44,6 +44,37 @@ atomic-me/
 ```
 
 See [docs/architecture.md](docs/architecture.md) for detailed architecture overview.
+
+## Authentication (Clerk) - dev setup
+
+Phase 3 uses [Clerk](https://clerk.com) as the identity provider. To run auth locally:
+
+1. **Create a Clerk application** (free dev instance) at the Clerk Dashboard.
+2. **Copy the keys** into your env files:
+   - Root `.env` (loaded by `apps/api`):
+     ```
+     CLERK_SECRET_KEY=sk_test_...
+     CLERK_PUBLISHABLE_KEY=pk_test_...
+     CLERK_JWT_ISSUER=https://<your-app>.clerk.accounts.dev   # = Frontend API URL
+     CLERK_WEBHOOK_SECRET=whsec_...                            # filled in step 4
+     ```
+   - `apps/web/.env.local`:
+     ```
+     VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+     VITE_API_BASE_URL=http://localhost:3001
+     ```
+   See `.env.example`, `apps/api/.env.example`, and `apps/web/.env.example` for the full list.
+   The API validates these on boot and exits if any are missing.
+3. **Run the apps**: `pnpm dev` (api on `:3001`, web on `:5173`).
+4. **Wire the webhook** so Clerk syncs users into the local DB:
+   - Expose the API: `ngrok http 3001`.
+   - In the Clerk Dashboard add a webhook endpoint `https://<ngrok-id>.ngrok.app/webhooks/clerk`
+     subscribed to `user.created`, `user.updated`, `user.deleted`.
+   - Copy the endpoint's **Signing Secret** into `CLERK_WEBHOOK_SECRET` and restart the API.
+   - You can also fire test events from the Clerk Dashboard "Testing" tab.
+
+Smoke test: sign up in the web app, get redirected to `/upload`, and the page calls the
+protected `GET /me` endpoint with your Clerk JWT and shows your user record.
 
 ## Available Scripts
 
