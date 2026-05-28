@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 
@@ -39,6 +40,16 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
   // auth (fastify-plugin) decorate `authenticate` + `request.user` len root,
   // nen cac route dang ky sau co the dung lam preHandler.
   await app.register(sensible);
+  // CORS: bao boc TAT CA route (vd POST /assets/upload-url tu http://localhost:5173).
+  // origin: true => reflect request origin (an toan vi auth thuc te dung Bearer JWT,
+  // CORS chi de browser cho phep response qua same-origin policy).
+  await app.register(cors, {
+    origin: true,
+    credentials: false,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['content-type', 'authorization'],
+    maxAge: 600,
+  });
   await app.register(errorHandler);
   await app.register(dbPlugin);
   await app.register(authPlugin);
