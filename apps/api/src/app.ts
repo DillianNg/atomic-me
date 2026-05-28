@@ -8,6 +8,9 @@ import { loggerOptions } from './lib/logger.js';
 import authPlugin from './plugins/auth.js';
 import dbPlugin from './plugins/db.js';
 import errorHandler from './plugins/error-handler.js';
+import rateLimitPlugin from './plugins/rate-limit.js';
+import storagePlugin from './plugins/storage.js';
+import assetRoutes from './routes/assets/index.js';
 import healthRoutes from './routes/health.js';
 import userRoutes from './routes/users/me.js';
 import clerkWebhookRoutes from './routes/webhooks/clerk.js';
@@ -39,9 +42,12 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
   await app.register(errorHandler);
   await app.register(dbPlugin);
   await app.register(authPlugin);
+  await app.register(storagePlugin);
+  await app.register(rateLimitPlugin);
 
   await app.register(healthRoutes);
   await app.register(userRoutes);
+  await app.register(assetRoutes);
   // Webhook khong dung `authenticate` (verify bang svix signature).
   await app.register(clerkWebhookRoutes);
 

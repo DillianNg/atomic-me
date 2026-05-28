@@ -3,6 +3,79 @@
 All notable changes to this project are documented here. Phases map to the
 build plan; each is shipped behind a git tag for easy rollback.
 
+## Phase 5 - Upload pipeline (Cloudflare R2)
+
+### Backend (`apps/api`)
+
+- **Storage plugin** (`plugins/storage.ts`): R2 S3-compatible client via AWS SDK v3
+  + `presignPut` and `presignGet` helpers (private bucket, 5 minute TTL). Exposes
+  `sanitizeFilename` and `buildStorageKey` (`users/{userId}/assets/{assetId}/{file}`).
+- **Rate-limit plugin** (`plugins/rate-limit.ts`): in-memory per-user sliding
+  window (20 req / minute / user keyed by `request.user.id`, IP fallback). Runs
+  as preHandler after `authenticate`. Throws `RateLimitError` (429 RATE_LIMITED).
+- **Asset routes** (`routes/assets/{schema,handlers,index}.ts`):
+  - `POST /assets/upload-url`: validates size + MIME, derives `AssetType` from
+    MIME, creates `Asset` (status `PENDING`), returns presigned PUT URL.
+  - `POST /assets/confirm`: scoped to `userId` from JWT, transitions PENDING ->
+    UPLOADED, writes audit log (`ASSET_UPLOADED`). Idempotent.
+- **Asset repo + service** (`repositories/asset.repo.ts`,
+  `services/asset.service.ts`): pure Prisma layer + validation/orchestration.
+- **AuditAction** union extended with `ASSET_UPLOADED`.
+- **Env**: added required `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+  `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` (fail-fast on boot).
+- **Tests**: 26 new (storage helpers, asset.service validation, route
+  integration including 401/400/429/404 + audit). 71 tests total, all green.
+
+### Frontend (`apps/web`)
+
+- New `features/upload/` slice:
+  - `api.ts`: orchestration helpers (`requestUploadUrl`, `putToR2` via XHR for
+    upload progress, `confirmUpload`).
+  - `hooks/useUploadAsset.ts`: state machine (idle / requesting / uploading /
+    confirming / done / error) plus client-side size + MIME guard.
+  - `hooks/usePresignedUrl.ts`: TanStack Query mutation for the first leg.
+  - `components/UploadDropzone.tsx`: click + drag-drop input.
+  - `components/FilePreview.tsx`: name, size, MIME card.
+  - `components/ParseProgress.tsx`: progress bar with stage label (Phase 6 hook
+    in place for parse status).
+- `pages/upload.tsx`: replaces the Phase 4 placeholder with the full feature.
+- README at `features/upload/README.md` documents the manual E2E test against
+  real R2 (bucket + CORS + env setup).
+
+### Schema / shared
+
+- Migration `20260528000000_asset_pending_status`: adds `PENDING` to the
+  `AssetStatus` enum (before `UPLOADED`) and changes `Asset.status` default to
+  `PENDING`. Lowest-risk add (kept `EXTRACTING` / `COMPLETED` for later phases).
+- `packages/shared/src/schemas/asset.ts`: Zod schemas for upload-url and confirm
+  (request + response) as the single source of truth for FE/BE.
+
+### Notes
+
+- `MAX_FILE_SIZE_MB` kept at 25 (per user decision, spec said 10).
+- Bucket is private; only signed URLs reach R2. FE PUTs directly, never proxied.
+- Rate limit is per-process for Phase 5 (one API instance behind Cloudflare).
+  Multi-instance deployments will need a shared store (Redis).
+- R2 CORS for PUT from the FE origin is a Cloudflare-dashboard step, documented
+  in `apps/web/src/features/upload/README.md`.
+
+## Phase 4 - Frontend shell + layout
+
+- Layout (`Sidebar`, `TopBar`, `PageContainer`, `AppLayout`) with collapse
+  persisted via Zustand and a route-derived TopBar title + user-menu dropdown.
+- shadcn-style UI primitives over Radix: `button`, `dialog`, `dropdown-menu`,
+  `tooltip`, `toast` + `toaster` + `use-toast`, `input`, `card`, `skeleton`.
+- Feedback components: `EmptyState`, `ErrorBoundary` (class + retry),
+  `LoadingSkeleton` (card / list / text variants).
+- Theme + dark mode: HSL CSS variables on `:root` and `.dark`; Tailwind v3
+  `darkMode: 'class'` mapping; inline boot script in `index.html` to avoid FOUC.
+- Zustand UI store (`stores/ui.ts`) persisted to localStorage under
+  `atomic-me-ui` (`sidebarCollapsed`, `theme`).
+- Routing: protected routes wrapped in `ProtectedRoute` + `AppLayout`. Eight
+  placeholder pages with `// TODO: Phase X` markers.
+- `@/` path alias in tsconfig + vite.config; `lib/query-client` updated (queries
+  retry 1, mutations 0); `lib/utils` gains `formatDate` + `truncate`.
+
 ## Phase 3 - Authentication (Clerk)
 
 ### Backend (`apps/api`)

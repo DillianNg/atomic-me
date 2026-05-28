@@ -9,6 +9,10 @@ const validBase = {
   CLERK_PUBLISHABLE_KEY: 'pk_test_x',
   CLERK_WEBHOOK_SECRET: 'whsec_test_x',
   CLERK_JWT_ISSUER: 'https://example.clerk.accounts.dev',
+  R2_ACCOUNT_ID: 'acct_x',
+  R2_ACCESS_KEY_ID: 'akid_x',
+  R2_SECRET_ACCESS_KEY: 'sak_x',
+  R2_BUCKET: 'bucket-x',
 } as const;
 
 describe('env schema', () => {

@@ -14,7 +14,12 @@ import type { FastifyBaseLogger } from 'fastify';
  * Quy tac: fire-and-forget. logAudit() KHONG BAO GIO throw -> khong lam
  * fail request chinh; loi ghi log duoc nuot va log lai qua logger.
  */
-export type AuditAction = 'USER_CREATED' | 'USER_UPDATED' | 'USER_DELETED' | 'AUTH_FAILED';
+export type AuditAction =
+  | 'USER_CREATED'
+  | 'USER_UPDATED'
+  | 'USER_DELETED'
+  | 'AUTH_FAILED'
+  | 'ASSET_UPLOADED';
 
 export interface AuditInput {
   db: PrismaClient | Prisma.TransactionClient;

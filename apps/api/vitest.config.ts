@@ -16,6 +16,11 @@ export default defineConfig({
       CLERK_PUBLISHABLE_KEY: 'pk_test_dummy',
       CLERK_WEBHOOK_SECRET: 'whsec_dGVzdHNlY3JldHRlc3RzZWNyZXQ=',
       CLERK_JWT_ISSUER: 'https://example.clerk.accounts.dev',
+      // R2 (Phase 5): gia tri gia lap cho test, khong cham R2 that.
+      R2_ACCOUNT_ID: 'test_account_id',
+      R2_ACCESS_KEY_ID: 'test_access_key',
+      R2_SECRET_ACCESS_KEY: 'test_secret_key',
+      R2_BUCKET: 'atomic-me-test',
     },
     coverage: {
       provider: 'v8',
