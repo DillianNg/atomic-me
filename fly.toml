@@ -1,0 +1,38 @@
+# Fly.io config cho @atomic-me/api.
+# Chay `fly deploy` tu repo ROOT (chu khong phai tu apps/api) de Docker
+# build context la repo root (Dockerfile copy pnpm-lock.yaml, packages/*, ...).
+#
+# Region mac dinh la Singapore (sin); doi sang region gan user neu can.
+# Xem apps/api/DEPLOY.md cho quy trinh deploy day du.
+
+app = 'atomic-me-api'
+primary_region = 'sin'
+
+[build]
+  dockerfile = 'apps/api/Dockerfile'
+
+[env]
+  PORT = '3001'
+  API_HOST = '0.0.0.0'
+  NODE_ENV = 'production'
+  LOG_LEVEL = 'info'
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+  [[http_service.checks]]
+    grace_period = '15s'
+    interval = '30s'
+    method = 'GET'
+    timeout = '5s'
+    path = '/health'
+
+[[vm]]
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 512
