@@ -8,10 +8,10 @@ build/
 .turbo/
 *.tsbuildinfo
 
-# Environment variables
-.env
-.env.local
-.env.*.local
+# Environment variables (broad ignore + explicit allow for .env.example
+# so editor backups like .env.save / .env~ cannot accidentally land in git).
+.env*
+!.env.example
 
 # Coverage
 coverage/
