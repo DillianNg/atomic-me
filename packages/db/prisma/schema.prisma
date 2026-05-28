@@ -30,6 +30,7 @@ enum AssetType {
 }
 
 enum AssetStatus {
+  PENDING
   UPLOADED
   PARSING
   PARSED
@@ -121,7 +122,7 @@ model Asset {
   storageKey       String
   sizeBytes        Int
   mimeType         String
-  status           AssetStatus @default(UPLOADED)
+  status           AssetStatus @default(PENDING)
   parsedText       String?     @db.Text
   errorMessage     String?
   createdAt        DateTime    @default(now())

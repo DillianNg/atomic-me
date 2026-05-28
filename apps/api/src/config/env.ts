@@ -22,6 +22,16 @@ export const envSchema = z.object({
   CLERK_WEBHOOK_SECRET: z.string().min(1),
   /** Issuer (iss) cua JWT Clerk, vd https://<app>.clerk.accounts.dev. */
   CLERK_JWT_ISSUER: z.string().url(),
+
+  // --- Cloudflare R2 (Phase 5 upload). Bat buoc; bucket assumed private. ---
+  /** Account ID Cloudflare, lay tu Dashboard > R2. Dung de dung endpoint. */
+  R2_ACCOUNT_ID: z.string().min(1),
+  /** Access key ID (R2 Object > Manage R2 API Tokens). */
+  R2_ACCESS_KEY_ID: z.string().min(1),
+  /** Secret access key di cung R2_ACCESS_KEY_ID. */
+  R2_SECRET_ACCESS_KEY: z.string().min(1),
+  /** Ten bucket dung de luu asset (PDF/DOCX/image/...). */
+  R2_BUCKET: z.string().min(1),
 });
 
 /** Kieu env da validate, infer tu schema. */
