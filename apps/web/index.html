@@ -4,6 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Atomic Me</title>
+    <script>
+      // Ap theme truoc khi React mount de tranh nhap nhay (FOUC).
+      // Doc state cua zustand persist (key 'atomic-me-ui') tu localStorage.
+      (function () {
+        try {
+          var raw = localStorage.getItem('atomic-me-ui');
+          var theme = raw ? (JSON.parse(raw).state || {}).theme : 'system';
+          var sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (theme === 'dark' || (theme === 'system' && sysDark) || (!theme && sysDark)) {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (_) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
