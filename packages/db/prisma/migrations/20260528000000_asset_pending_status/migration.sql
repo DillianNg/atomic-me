@@ -1,8 +1,7 @@
--- Phase 5: them trang thai PENDING vao AssetStatus va doi default Asset.status sang PENDING.
--- Postgres 12+ cho phep ADD VALUE trong cung mot transaction (project chay Postgres 16).
+-- Phase 5: them gia tri 'PENDING' vao enum AssetStatus.
+-- Postgres yeu cau ADD VALUE phai commit truoc khi co the dung lam default;
+-- vi vay phan SET DEFAULT duoc tach sang migration tiep theo
+-- (20260528000001_asset_default_pending).
 
 -- AlterEnum
 ALTER TYPE "AssetStatus" ADD VALUE 'PENDING' BEFORE 'UPLOADED';
-
--- AlterTable
-ALTER TABLE "Asset" ALTER COLUMN "status" SET DEFAULT 'PENDING';
