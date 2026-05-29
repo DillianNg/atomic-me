@@ -47,7 +47,7 @@ export interface CreateLoggerOptionsInput {
  */
 export interface SharedLoggerOptions {
   level: PinoLevel;
-  redact: { paths: readonly string[]; censor: string };
+  redact: { paths: string[]; censor: string };
   transport?: { target: string; options: Record<string, unknown> };
 }
 
@@ -56,9 +56,10 @@ export interface SharedLoggerOptions {
  * Khong cache (test co the goi nhieu lan voi cfg khac nhau).
  */
 export function createLoggerOptions(cfg: CreateLoggerOptionsInput): SharedLoggerOptions {
+  // Copy paths to a mutable array (pino's redact options require string[], not readonly).
   const base: SharedLoggerOptions = {
     level: cfg.level,
-    redact: { paths: LOG_REDACT_PATHS, censor: '[REDACTED]' },
+    redact: { paths: [...LOG_REDACT_PATHS], censor: '[REDACTED]' },
   };
   if (cfg.nodeEnv === 'development') {
     return {

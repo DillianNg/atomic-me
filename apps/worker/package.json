@@ -1,0 +1,40 @@
+{
+  "name": "@atomic-me/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@atomic-me/db": "workspace:*",
+    "@atomic-me/shared": "workspace:*",
+    "@aws-sdk/client-s3": "^3.1055.0",
+    "adm-zip": "^0.5.16",
+    "bullmq": "^5.34.10",
+    "mammoth": "^1.8.0",
+    "pdf-parse": "^1.1.1",
+    "pino": "^9.5.0",
+    "pino-pretty": "^13.0.0",
+    "sharp": "^0.33.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@atomic-me/eslint-config": "workspace:*",
+    "@atomic-me/tsconfig": "workspace:*",
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^22.10.5",
+    "@types/pdf-parse": "^1.1.4",
+    "@vitest/coverage-v8": "^2.1.8",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
