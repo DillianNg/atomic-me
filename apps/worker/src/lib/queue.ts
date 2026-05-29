@@ -1,4 +1,9 @@
-import type { ParseAssetJob } from '@atomic-me/shared';
+import {
+  DEFAULT_JOB_OPTIONS as SHARED_DEFAULT_JOB_OPTIONS,
+  QUEUE_NAMES,
+  type ParseAssetJob,
+  type QueueName,
+} from '@atomic-me/shared';
 import {
   Queue,
   QueueEvents,
@@ -10,21 +15,7 @@ import {
 
 import { env } from '../config/env.js';
 
-/**
- * Ten cac queue.
- * Phase 6 chi implement worker `parse-asset`. Cac queue khac da khai bao
- * de API / worker khac co the enqueue tu Phase 7+.
- */
-export const QUEUE_NAMES = {
-  PARSE_ASSET: 'parse-asset',
-  EXTRACT_ATOMS: 'extract-atoms',
-  EMBED_ATOMS: 'embed-atoms',
-  DEDUP_ATOMS: 'dedup-atoms',
-  CANONICALIZE: 'canonicalize',
-  CLEANUP: 'cleanup',
-} as const;
-
-export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
+export { QUEUE_NAMES, type QueueName };
 
 /**
  * Map queue name -> payload type. Mo rong khi Phase 7+ them job moi.
@@ -56,13 +47,8 @@ export function getConnectionOptions(): ConnectionOptions {
   };
 }
 
-/** Default job options ap dung cho moi job add() qua wrapper. */
-export const DEFAULT_JOB_OPTIONS = {
-  attempts: 3,
-  backoff: { type: 'exponential' as const, delay: 2000 },
-  removeOnComplete: { age: 86_400, count: 1000 },
-  removeOnFail: { age: 604_800 },
-} as const;
+/** Default job options ap dung cho moi job add() qua wrapper (re-export tu shared). */
+export const DEFAULT_JOB_OPTIONS = SHARED_DEFAULT_JOB_OPTIONS;
 
 /**
  * Wrap BullMQ Queue voi default opts.

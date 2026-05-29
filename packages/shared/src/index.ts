@@ -10,5 +10,6 @@ export * from './types/api.js';
 export * from './types/jobs.js';
 export * from './constants/credits.js';
 export * from './constants/limits.js';
+export * from './constants/queues.js';
 export * from './utils/atom-id.js';
 export * from './logger.js';

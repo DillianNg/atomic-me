@@ -54,6 +54,7 @@ export async function postConfirm(
   const result: ConfirmUploadResult = await confirmUpload({
     db: request.server.db,
     log: request.log,
+    parseAssetQueue: request.server.queue.parseAsset,
     userId: user.id,
     assetId: body.assetId,
     ipAddress: request.ip,
