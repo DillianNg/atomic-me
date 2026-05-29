@@ -124,6 +124,12 @@ model Asset {
   mimeType         String
   status           AssetStatus @default(PENDING)
   parsedText       String?     @db.Text
+  // parsedMetadata: page count, languages, image dimensions,... (parser-specific JSON).
+  parsedMetadata   Json?
+  // Timestamp set khi worker chuyen status -> PARSED. Null khi chua parse hoac fail.
+  parsedAt         DateTime?
+  // Cac warning khong fatal (vd PDF khong co text, mammoth strip style,...).
+  warnings         String[]    @default([])
   errorMessage     String?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
