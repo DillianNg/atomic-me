@@ -1,6 +1,7 @@
 import { prisma } from '@atomic-me/db';
 
 import { logger } from './lib/logger.js';
+import { createExtractAtomsWorker } from './workers/extract-atoms.worker.js';
 import { createParseAssetWorker } from './workers/parse-asset.worker.js';
 
 /** Loose worker type cho mang chua nhieu BullMQ workers voi generic khac nhau. */
@@ -26,6 +27,7 @@ async function main(): Promise<void> {
 
   const workers: AnyWorker[] = [];
   workers.push(createParseAssetWorker(prisma, logger));
+  workers.push(createExtractAtomsWorker(prisma, logger));
 
   // Khi BullMQ worker ready (connect Redis OK + lang nghe), log signal.
   await Promise.all(
