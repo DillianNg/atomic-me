@@ -11,3 +11,4 @@ export * from './types/jobs.js';
 export * from './constants/credits.js';
 export * from './constants/limits.js';
 export * from './utils/atom-id.js';
+export * from './logger.js';
