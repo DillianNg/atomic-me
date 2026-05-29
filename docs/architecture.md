@@ -96,6 +96,59 @@ worker reference the same names + default job options
 The registry routes on `(mimeType, filename)`; LinkedIn-zip is checked
 before generic parsers so `application/zip` lands on the right handler.
 
+## Atomize pipeline (Phase 7)
+
+Builds on the background-jobs section. After `parse-asset` flips an asset
+to `PARSED`, it enqueues `extract-atoms` with `jobId = extract:<assetId>`
++ per-job `{ attempts: 3, backoff: { type: 'exponential', delay: 1000 } }`.
+
+```
+extract-atoms worker (concurrency 3, BullMQ retry 3 + exp backoff 1s)
+  1. load Asset; verify userId; status check (PARSED resume, COMPLETED skip,
+     EXTRACTING + atomCount>0 skip, else UnrecoverableError)
+  2. empty parsedText -> COMPLETED + ATOMS_CREATED count=0
+  3. status -> EXTRACTING + audit ASSET_EXTRACTING
+  4. cost gate: estimate from chars * 2.125 / 1M; over EXTRACTION_COST_CAP_USD
+     -> FAILED + UnrecoverableError, no Claude call
+  5. extractAtomsFromAsset:
+       chunk parsedText (12k chars max, 500 char overlap on paragraph
+       boundaries) -> for each chunk: traced(anthropic.messages.create with
+       tool_choice 'submit_atoms') -> Zod LLMExtractionResultSchema ->
+       per atom: normalize kind (UPPERCASE, role -> RESPONSIBILITY),
+       absolute offsets, byte-exact snippet verify, strict
+       AtomContentSchema discriminated-union validation; cross-chunk
+       dedup by (kind, snippet)
+  6. $transaction: createMany atoms + Asset.update { status COMPLETED,
+     atomCount, extractionCostUsd, extractedAt }
+  7. audit ASSET_EXTRACTED + ATOMS_CREATED
+```
+
+Error policy mirrors `parse-asset`:
+
+- `PermanentError` (input too large, LLM did not call submit_atoms, bad
+  Zod, 400/401/403 from Anthropic, cost cap exceeded) -> status FAILED
+  + audit `ASSET_EXTRACT_FAILED` + `UnrecoverableError` (no retry).
+- Transient (Anthropic 429 / 5xx / DB timeout) -> write `errorMessage`,
+  re-throw so BullMQ retries from `status = EXTRACTING`.
+
+The single $transaction around `createMany` + status flip means a crash
+either rolls back both or commits both; restart picks up cleanly.
+
+### Anti-hallucination
+
+Every extracted atom carries `evidenceSpan = { assetId, startOffset,
+endOffset, snippet }`. The worker checks
+`parsedText.slice(startOffset, endOffset) === snippet` byte-exact. An
+atom whose snippet does not match is rejected before it reaches the DB.
+This is the same anti-fabrication invariant the rest of the system
+relies on for Phase 9 composition.
+
+### Prompt versioning
+
+`Atom.promptVersion` records the exact prompt string that generated the
+atom (e.g. `extract-atom@v1.0.0`). New versions go in new files, never
+edits to old ones; see `docs/llm-prompts.md` for the policy.
+
 ## Key Invariant
 
 Every atom must have an `evidence_span` pointing back to the original asset. Composition must cite `atom_id` for each claim. This ensures traceability and prevents hallucination.
