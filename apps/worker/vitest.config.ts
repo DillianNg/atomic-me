@@ -14,6 +14,7 @@ export default defineConfig({
       R2_ACCESS_KEY_ID: 'test_access_key',
       R2_SECRET_ACCESS_KEY: 'test_secret_key',
       R2_BUCKET: 'atomic-me-test',
+      ANTHROPIC_API_KEY: 'sk-ant-test-dummy',
     },
   },
 });
