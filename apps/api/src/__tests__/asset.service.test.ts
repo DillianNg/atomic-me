@@ -120,9 +120,13 @@ describe('requestUploadUrl', () => {
 });
 
 describe('confirmUpload', () => {
-  const baseInput = () => ({
+  function makeQueue() {
+    return { add: vi.fn().mockResolvedValue(undefined) };
+  }
+  const baseInput = (queue = makeQueue()) => ({
     db: {} as PrismaClient,
     log: makeLog(),
+    parseAssetQueue: queue,
     userId: 'user_1',
     assetId: 'asset_1',
     ipAddress: null,
@@ -131,22 +135,31 @@ describe('confirmUpload', () => {
 
   it('throws NotFoundError when the asset is not owned by the user', async () => {
     vi.mocked(assetRepo.findByIdForUser).mockResolvedValue(null);
-    await expect(confirmUpload(baseInput())).rejects.toThrow(NotFoundError);
+    const input = baseInput();
+    await expect(confirmUpload(input)).rejects.toThrow(NotFoundError);
+    expect(input.parseAssetQueue.add).not.toHaveBeenCalled();
   });
 
-  it('is idempotent when the asset is already UPLOADED', async () => {
-    vi.mocked(assetRepo.findByIdForUser).mockResolvedValue(makeAsset({ status: AssetStatus.UPLOADED }));
-    const result = await confirmUpload(baseInput());
+  it('is idempotent when the asset is already UPLOADED but still re-enqueues parse', async () => {
+    vi.mocked(assetRepo.findByIdForUser).mockResolvedValue(
+      makeAsset({ status: AssetStatus.UPLOADED }),
+    );
+    const queue = makeQueue();
+    const result = await confirmUpload(baseInput(queue));
     expect(result).toEqual({ id: 'asset_1', status: 'UPLOADED' });
     expect(assetRepo.setStatus).not.toHaveBeenCalled();
     expect(logAudit).not.toHaveBeenCalled();
+    // BullMQ jobId dedupe -> re-enqueue an toan.
+    expect(queue.add).toHaveBeenCalledTimes(1);
+    expect(queue.add.mock.calls[0]?.[2]).toEqual({ jobId: 'parse:asset_1' });
   });
 
-  it('moves PENDING to UPLOADED and writes an audit log', async () => {
+  it('moves PENDING to UPLOADED, audits, enqueues parse-asset', async () => {
     vi.mocked(assetRepo.findByIdForUser).mockResolvedValue(makeAsset({ status: AssetStatus.PENDING }));
     vi.mocked(assetRepo.setStatus).mockResolvedValue(makeAsset({ status: AssetStatus.UPLOADED }));
 
-    const result = await confirmUpload(baseInput());
+    const queue = makeQueue();
+    const result = await confirmUpload(baseInput(queue));
 
     expect(result).toEqual({ id: 'asset_1', status: 'UPLOADED' });
     expect(assetRepo.setStatus).toHaveBeenCalledWith({}, 'asset_1', AssetStatus.UPLOADED);
@@ -157,10 +170,24 @@ describe('confirmUpload', () => {
       entityId: 'asset_1',
       userId: 'user_1',
     });
+    expect(queue.add).toHaveBeenCalledTimes(1);
+    expect(queue.add.mock.calls[0]?.[0]).toBe('parse-asset');
+    expect(queue.add.mock.calls[0]?.[1]).toEqual({ assetId: 'asset_1', userId: 'user_1' });
+    expect(queue.add.mock.calls[0]?.[2]).toEqual({ jobId: 'parse:asset_1' });
+  });
+
+  it('still returns success when queue enqueue fails (non-fatal)', async () => {
+    vi.mocked(assetRepo.findByIdForUser).mockResolvedValue(makeAsset({ status: AssetStatus.PENDING }));
+    vi.mocked(assetRepo.setStatus).mockResolvedValue(makeAsset({ status: AssetStatus.UPLOADED }));
+    const queue = { add: vi.fn().mockRejectedValue(new Error('redis down')) };
+    const result = await confirmUpload(baseInput(queue));
+    expect(result).toEqual({ id: 'asset_1', status: 'UPLOADED' });
   });
 
   it('throws ForbiddenError when the asset is in an unrelated status (eg FAILED)', async () => {
     vi.mocked(assetRepo.findByIdForUser).mockResolvedValue(makeAsset({ status: AssetStatus.FAILED }));
-    await expect(confirmUpload(baseInput())).rejects.toThrow(ForbiddenError);
+    const input = baseInput();
+    await expect(confirmUpload(input)).rejects.toThrow(ForbiddenError);
+    expect(input.parseAssetQueue.add).not.toHaveBeenCalled();
   });
 });

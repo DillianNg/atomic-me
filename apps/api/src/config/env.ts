@@ -32,6 +32,10 @@ export const envSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().min(1),
   /** Ten bucket dung de luu asset (PDF/DOCX/image/...). */
   R2_BUCKET: z.string().min(1),
+
+  // --- Queue (BullMQ / Redis - Phase 6). ---
+  /** Redis URL cho BullMQ producer. Default tro local docker-compose. */
+  REDIS_URL: z.string().url().default('redis://localhost:6379'),
 });
 
 /** Kieu env da validate, infer tu schema. */

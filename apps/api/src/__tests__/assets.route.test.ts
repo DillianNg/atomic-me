@@ -6,6 +6,15 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 vi.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: vi.fn().mockResolvedValue('https://r2.example.com/signed-put'),
 }));
+// Mock BullMQ truoc khi queue plugin tao Queue: trong test khong co Redis.
+const queueAdd = vi.fn().mockResolvedValue(undefined);
+vi.mock('bullmq', () => ({
+  Queue: vi.fn().mockImplementation(() => ({
+    add: queueAdd,
+    close: vi.fn().mockResolvedValue(undefined),
+    on: vi.fn(),
+  })),
+}));
 vi.mock('../lib/clerk.js');
 vi.mock('../repositories/user.repo.js');
 vi.mock('../repositories/asset.repo.js');
@@ -158,7 +167,7 @@ describe('POST /assets/upload-url', () => {
 });
 
 describe('POST /assets/confirm', () => {
-  it('returns 200 with UPLOADED status and writes an audit log', async () => {
+  it('returns 200 with UPLOADED status, audits, enqueues parse-asset job', async () => {
     vi.mocked(assetRepo.findByIdForUser).mockResolvedValue(makeAsset({ status: AssetStatus.PENDING }));
     vi.mocked(assetRepo.setStatus).mockResolvedValue(makeAsset({ status: AssetStatus.UPLOADED }));
 
@@ -178,6 +187,10 @@ describe('POST /assets/confirm', () => {
       entityId: 'asset_1',
       userId: 'user_local_1',
     });
+    expect(queueAdd).toHaveBeenCalledTimes(1);
+    expect(queueAdd.mock.calls[0]?.[0]).toBe('parse-asset');
+    expect(queueAdd.mock.calls[0]?.[1]).toEqual({ assetId: 'asset_1', userId: 'user_local_1' });
+    expect(queueAdd.mock.calls[0]?.[2]).toEqual({ jobId: 'parse:asset_1' });
   });
 
   it('returns 404 when the asset does not belong to the user', async () => {
@@ -189,5 +202,6 @@ describe('POST /assets/confirm', () => {
       payload: { assetId: 'someone_elses' },
     });
     expect(res.statusCode).toBe(404);
+    expect(queueAdd).not.toHaveBeenCalled();
   });
 });

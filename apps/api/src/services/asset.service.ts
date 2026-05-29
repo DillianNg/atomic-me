@@ -3,7 +3,9 @@ import {
   ALLOWED_MIME_TYPES,
   MAX_ASSETS_PER_USER,
   MAX_FILE_SIZE_MB,
+  QUEUE_NAMES,
   type AllowedMimeType,
+  type ParseAssetJob,
   type UploadUrlRequest,
 } from '@atomic-me/shared';
 import type { FastifyBaseLogger } from 'fastify';
@@ -108,9 +110,24 @@ export async function requestUploadUrl(
   };
 }
 
+/**
+ * Queue producer interface (Dependency Injection): asset.service KHONG import
+ * BullMQ truc tiep. apps/api truyen fastify.queue.parseAsset (Queue<...>) vao;
+ * test truyen mock voi method add().
+ */
+export interface ParseAssetEnqueuer {
+  add(
+    name: string,
+    data: ParseAssetJob,
+    opts?: { jobId?: string },
+  ): Promise<unknown>;
+}
+
 export interface ConfirmUploadInput {
   db: PrismaClient;
   log: FastifyBaseLogger;
+  /** Queue producer cho 'parse-asset' (typically fastify.queue.parseAsset). */
+  parseAssetQueue: ParseAssetEnqueuer;
   userId: string;
   assetId: string;
   ipAddress: string | null;
@@ -129,7 +146,7 @@ export interface ConfirmUploadResult {
  * - Ghi audit log action 'asset.uploaded'.
  */
 export async function confirmUpload(input: ConfirmUploadInput): Promise<ConfirmUploadResult> {
-  const { db, log, userId, assetId } = input;
+  const { db, log, userId, assetId, parseAssetQueue } = input;
 
   const asset = await assetRepo.findByIdForUser(db, assetId, userId);
   if (!asset) {
@@ -138,6 +155,8 @@ export async function confirmUpload(input: ConfirmUploadInput): Promise<ConfirmU
   }
   if (asset.status === AssetStatus.UPLOADED) {
     // Idempotent: confirm 2 lan tra ket qua nhat quan, khong throw.
+    // Re-enqueue voi jobId deterministic la safe (BullMQ dedupe).
+    await safeEnqueueParse(parseAssetQueue, log, { assetId: asset.id, userId });
     return { id: asset.id, status: 'UPLOADED' };
   }
   if (asset.status !== AssetStatus.PENDING) {
@@ -158,5 +177,31 @@ export async function confirmUpload(input: ConfirmUploadInput): Promise<ConfirmU
     userAgent: input.userAgent,
   });
 
+  // Enqueue parse job. Khong nuot loi enqueue -> client biet retry.
+  await safeEnqueueParse(parseAssetQueue, log, {
+    assetId: updated.id,
+    userId,
+  });
+
   return { id: updated.id, status: 'UPLOADED' };
+}
+
+/**
+ * Enqueue parse-asset job. jobId deterministic theo assetId => BullMQ dedupe
+ * khi confirm goi nhieu lan. Log nhung khong throw: confirm chinh van OK.
+ */
+async function safeEnqueueParse(
+  queue: ParseAssetEnqueuer,
+  log: FastifyBaseLogger,
+  payload: ParseAssetJob,
+): Promise<void> {
+  try {
+    await queue.add(
+      QUEUE_NAMES.PARSE_ASSET,
+      payload,
+      { jobId: `parse:${payload.assetId}` },
+    );
+  } catch (err) {
+    log.error({ err, assetId: payload.assetId }, 'Failed to enqueue parse-asset job');
+  }
 }

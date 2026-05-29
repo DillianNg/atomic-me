@@ -21,6 +21,8 @@ export default defineConfig({
       R2_ACCESS_KEY_ID: 'test_access_key',
       R2_SECRET_ACCESS_KEY: 'test_secret_key',
       R2_BUCKET: 'atomic-me-test',
+      // BullMQ (Phase 6): test khong ket noi Redis, queue plugin mock o app level.
+      REDIS_URL: 'redis://localhost:6379',
     },
     coverage: {
       provider: 'v8',
