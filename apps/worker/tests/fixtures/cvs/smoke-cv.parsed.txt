@@ -1,0 +1,14 @@
+John Smith
+Senior Backend Engineer
+
+Experience:
+Senior Backend Engineer at Acme Corp, Jan 2021 to present.
+Built distributed payment services in Python and Go. Reduced p99 latency by 40% in Q3 2023.
+
+Backend Engineer at Globex Inc, Jun 2018 to Dec 2020.
+Designed REST APIs in Node.js for the recommendation engine.
+
+Education:
+BSc Computer Science, MIT, 2014-2018.
+
+Skills: Python, Go, Node.js, PostgreSQL, Redis.
