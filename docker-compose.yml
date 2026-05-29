@@ -1,6 +1,7 @@
-# Postgres 16 + pgvector cho local development.
+# Local services cho atomic-me dev.
 # Khoi dong: docker compose up -d
-# Connection: postgresql://atomic:atomic@localhost:5432/atomic_me
+# Postgres: postgresql://atomic:atomic@localhost:5432/atomic_me
+# Redis:    redis://localhost:6379
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -18,6 +19,22 @@ services:
       test: ['CMD-SHELL', 'pg_isready -U atomic -d atomic_me']
       interval: 5s
       timeout: 5s
+      retries: 10
+
+  # Redis cho BullMQ (Phase 6+).
+  # AOF off, save off: data o local khong can persistence; restart la sach.
+  # Production se dung Upstash hoac Railway Redis.
+  redis:
+    image: redis:7-alpine
+    container_name: atomic-me-redis
+    restart: unless-stopped
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
       retries: 10
 
 volumes:
