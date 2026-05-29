@@ -26,6 +26,76 @@ Frontend gets a presigned URL from API, uploads directly to R2, API receives met
 
 Parse JD into requirement atoms, semantic retrieval + LLM rerank from user's atom ledger, constrained compose (only cite selected atom_ids), export.
 
+## Background Jobs (Phase 6+)
+
+The worker (`apps/worker`) is a separate Node process that consumes BullMQ
+queues backed by Redis. The API (`apps/api`) is the producer; it never
+parses files itself.
+
+### Phase 6 pipeline: ingest
+
+```
+POST /assets/confirm
+  -> asset.status = UPLOADED
+  -> fastify.queue.parseAsset.add('parse-asset', { assetId, userId },
+                                   { jobId: 'parse:<assetId>' })
+
+parse-asset worker:
+  1. load Asset; abort UnrecoverableError if not found / not owned
+  2. skip if status already PARSED (idempotent)
+  3. status -> PARSING + audit ASSET_PARSING
+  4. GET object from R2 (storageKey) into a size-capped Buffer
+  5. parserRegistry.getParser(mime, filename) -> FileParser
+  6. parser.parse(buffer) -> { text, metadata, warnings }
+  7. status -> PARSED, write parsedText / parsedMetadata / parsedAt /
+     warnings + audit ASSET_PARSED
+  8. enqueue 'extract-atoms' placeholder (Phase 7 worker not yet built)
+```
+
+Error handling:
+- `PermanentError` from a parser (unsupported file type, corrupt PDF,
+  not-a-LinkedIn-zip) sets `status = FAILED`, writes `errorMessage`,
+  audits `ASSET_PARSE_FAILED`, throws `UnrecoverableError` so BullMQ
+  does not retry.
+- Anything else (R2 5xx, DB timeout) only writes `errorMessage` and
+  re-throws so BullMQ retries with exponential backoff
+  (3 attempts, base delay 2s). Status stays `PARSING` so the next
+  attempt resumes from the same state instead of restarting.
+
+### Queues (Phase 6 declared, only `parse-asset` implemented)
+
+| Name              | Producer                  | Worker     |
+|-------------------|---------------------------|------------|
+| `parse-asset`     | api / parse-asset worker  | Phase 6    |
+| `extract-atoms`   | parse-asset worker        | Phase 7    |
+| `embed-atoms`     | extract-atoms worker      | Phase 7    |
+| `dedup-atoms`     | embed-atoms worker        | Phase 7    |
+| `canonicalize`    | dedup-atoms worker        | Phase 8    |
+| `cleanup`         | cron                      | Phase n    |
+
+Constants live in `packages/shared/src/constants/queues.ts` so api and
+worker reference the same names + default job options
+(`attempts: 3`, exponential backoff, `removeOnComplete` after 1d/1000,
+`removeOnFail` after 7d).
+
+### Parsers (apps/worker/src/parsers)
+
+- `pdf.parser` uses `unpdf` (modern pdfjs-dist serverless build). Empty
+  text returns warning `no extractable text, may need OCR` instead of
+  failing, so scanned PDFs can be handled later by OCR.
+- `docx.parser` uses `mammoth.extractRawText`.
+- `linkedin-archive.parser` reads Profile / Positions / Education /
+  Skills / Certifications / Projects CSVs from a LinkedIn export zip;
+  missing `Profile.csv` is a `PermanentError`.
+- `image.parser` validates with `sharp` metadata; returns empty text +
+  a `deferred to extraction phase` warning until Phase 7 calls Claude
+  vision.
+- `audio.parser` is a stub that always throws `PermanentError` until
+  Phase 8 wires Whisper / Files API.
+
+The registry routes on `(mimeType, filename)`; LinkedIn-zip is checked
+before generic parsers so `application/zip` lands on the right handler.
+
 ## Key Invariant
 
 Every atom must have an `evidence_span` pointing back to the original asset. Composition must cite `atom_id` for each claim. This ensures traceability and prevents hallucination.
