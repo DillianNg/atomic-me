@@ -9,7 +9,12 @@ import type { Logger } from 'pino';
 export type WorkerAuditAction =
   | 'ASSET_PARSING'
   | 'ASSET_PARSED'
-  | 'ASSET_PARSE_FAILED';
+  | 'ASSET_PARSE_FAILED'
+  // Phase 7: extraction lifecycle.
+  | 'ASSET_EXTRACTING'
+  | 'ASSET_EXTRACTED'
+  | 'ASSET_EXTRACT_FAILED'
+  | 'ATOMS_CREATED';
 
 export interface WorkerAuditInput {
   db: PrismaClient | Prisma.TransactionClient;

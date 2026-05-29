@@ -114,7 +114,12 @@ export async function processParseAsset(
       await queue.add(
         NAMES.EXTRACT_ATOMS,
         { assetId, userId },
-        { jobId: `extract:${assetId}` },
+        {
+          jobId: `extract:${assetId}`,
+          // Phase 7: extraction retry nhanh hon parse (1s vs 2s base). 3 attempts giu nhu DEFAULT.
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 1000 },
+        },
       );
       await queue.close();
     } catch (err) {
