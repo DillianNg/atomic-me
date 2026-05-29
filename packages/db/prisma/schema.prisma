@@ -131,6 +131,12 @@ model Asset {
   // Cac warning khong fatal (vd PDF khong co text, mammoth strip style,...).
   warnings         String[]    @default([])
   errorMessage     String?
+  // Phase 7: cost USD cho call Claude extraction (1 hoac nhieu chunk).
+  extractionCostUsd Float?
+  // Phase 7: timestamp khi extract xong (status COMPLETED).
+  extractedAt      DateTime?
+  // Phase 7: so atom da extract tu asset nay. Bao gom ca low confidence.
+  atomCount        Int         @default(0)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
@@ -153,6 +159,9 @@ model Atom {
   embedding        Unsupported("vector(1024)")?
   isVerified       Boolean                      @default(false)
   mergedIntoId     String?
+  // Phase 7: version cua prompt da sinh ra atom. Vd 'extract-atom@v1.0.0'.
+  // Null cho atom user-authored hoac legacy.
+  promptVersion    String?
   createdAt        DateTime                     @default(now())
   updatedAt        DateTime                     @updatedAt
 

@@ -162,3 +162,48 @@ export const AtomUpdateInputSchema = z.object({
   isVerified: z.boolean().optional(),
 });
 export type AtomUpdateInput = z.infer<typeof AtomUpdateInputSchema>;
+
+// ============================================================
+// Phase 7: LLM extraction shapes
+// ============================================================
+
+/**
+ * Shape LLM emit (truoc khi worker normalize sang AtomCreateInput).
+ *
+ * Khac AtomCreateInput o cho:
+ * - kind co the lowercase (worker UPPERCASE hoa); cho phep 'role' -> map sang RESPONSIBILITY.
+ * - evidenceSpan KHONG co assetId (worker tu fill); chi co startOffset/endOffset/snippet.
+ * - content: discriminated union sau khi normalize kind. Vi LLM co the typo
+ *   kind/content, worker re-validate qua AtomContentSchema sau khi UPPERCASE hoa.
+ *
+ * Validation kep: schema nay accept rong rai (loose), AtomContentSchema strict.
+ */
+export const LLMEvidenceSpanSchema = z.object({
+  startOffset: z.number().int().nonnegative(),
+  endOffset: z.number().int().positive(),
+  snippet: z.string().min(1),
+});
+
+/** Kind LLM tra (case-insensitive + co the la 'role'). Worker normalize sau. */
+export const LLMAtomKindSchema = z.string().min(1);
+
+export const LLMExtractionAtomSchema = z.object({
+  kind: LLMAtomKindSchema,
+  /**
+   * Content shape phu thuoc kind sau khi UPPERCASE hoa, validate o worker.
+   * Cho z.record(z.unknown()) o schema LLM de khong reject early khi key sai vi case.
+   */
+  content: z.record(z.unknown()),
+  evidenceSpan: LLMEvidenceSpanSchema,
+  confidence: z.number().min(0).max(1),
+  reasoning: z.string().min(1).max(2000).optional(),
+});
+export type LLMExtractionAtom = z.infer<typeof LLMExtractionAtomSchema>;
+
+export const LLMExtractionResultSchema = z.object({
+  atoms: z.array(LLMExtractionAtomSchema),
+  /** ISO 639-1 2-letter code (vd 'en', 'vi'). */
+  sourceLanguage: z.string().length(2),
+  extractionNotes: z.string().nullable().optional(),
+});
+export type LLMExtractionResult = z.infer<typeof LLMExtractionResultSchema>;
